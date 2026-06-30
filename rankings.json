@@ -1,0 +1,44 @@
+[
+  {
+    "name": "G",
+    "winStreak": 3,
+    "rule": "TACTICAL",
+    "date": "2026-06-30T15:13:02.006Z"
+  },
+  {
+    "name": "G",
+    "winStreak": 2,
+    "rule": "TACTICAL",
+    "date": "2026-06-30T15:12:41.664Z"
+  },
+  {
+    "name": "Guest188",
+    "winStreak": 1,
+    "rule": "TACTICAL",
+    "date": "2026-06-30T15:10:51.072Z"
+  },
+  {
+    "name": "G",
+    "winStreak": 1,
+    "rule": "TACTICAL",
+    "date": "2026-06-30T15:11:20.581Z"
+  },
+  {
+    "name": "G",
+    "winStreak": 1,
+    "rule": "TACTICAL",
+    "date": "2026-06-30T15:11:54.377Z"
+  },
+  {
+    "name": "G",
+    "winStreak": 1,
+    "rule": "TACTICAL",
+    "date": "2026-06-30T15:12:22.859Z"
+  },
+  {
+    "name": "G",
+    "winStreak": 1,
+    "rule": "SPEED",
+    "date": "2026-06-30T15:13:29.527Z"
+  }
+]

@@ -1,0 +1,23 @@
+# J-Compass CRM Web Application - Task List
+
+- [ ] Phase 1: Planning and Setup
+  - [/] Create implementation plan
+  - [ ] Review plan with user
+  - [ ] Initialize Vite React project (ts, vanilla css)
+- [ ] Phase 2: Core Layout and Design System
+  - [ ] Define Vanilla CSS tokens and utility classes (`index.css`)
+  - [ ] Implement Sidebar Navigation (Dashboard, Companies, Contacts, Logs, Deals, Contracts)
+  - [ ] Implement Top Header and Layout Container
+- [ ] Phase 3: Data Models & Mock State
+  - [ ] Define TypeScript interfaces for 5 core models
+  - [ ] Create mock data store / React Context to manage state
+- [ ] Phase 4: Feature Implementation
+  - [ ] KPI Dashboard (Call counts, MRR, Pipeline overview)
+  - [ ] Company Management (List & Detail view)
+  - [ ] Contact Management
+  - [ ] Contact Log / Telemarketing View (Today's call list)
+  - [ ] Deal Pipeline (Kanban board)
+  - [ ] Contract/MRR Management
+- [ ] Phase 5: Polish & Final Review
+  - [ ] Refine aesthetics (glassmorphism, animations, colors)
+  - [ ] Verify functionality

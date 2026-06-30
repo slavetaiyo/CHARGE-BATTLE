@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Charge Battle Online</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: rgba(255, 255, 255, 0.05);
+            --panel-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --color-charge: #10b981;
+            --color-barrier: #3b82f6;
+            --color-attack: #ef4444;
+            --color-attack-sp: #8b5cf6;
+            --color-cpu: #e11d48;
+            --color-player: #06b6d4;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', 'Noto Sans JP', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a, #1e293b, #0f172a);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        #app {
+            width: 100%;
+            max-width: 500px;
+            height: 100vh;
+            max-height: 900px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        /* --- Menus --- */
+        .fullscreen-menu {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 50px;
+            background: rgba(15, 23, 42, 0.95);
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            padding: 40px 20px;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s, transform 0.5s;
+        }
+
+        .fullscreen-menu.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(1.1);
+        }
+
+        .title {
+            font-size: 3rem;
+            font-weight: 900;
+            margin-bottom: 20px;
+            text-align: center;
+            background: linear-gradient(to right, var(--color-charge), var(--color-player));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(6, 182, 212, 0.5);
+        }
+
+        .btn-large {
+            width: 100%;
+            padding: 20px;
+            font-size: 1.5rem;
+            font-weight: 900;
+            border-radius: 16px;
+            background: var(--panel-bg);
+            border: 2px solid var(--panel-border);
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .btn-large:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            background: rgba(255,255,255,0.1);
+        }
+
+        .btn-large.primary { border-color: var(--color-player); }
+        .btn-large.secondary { border-color: var(--color-charge); }
+
+        /* Ranking Board */
+        #ranking-board {
+            width: 100%;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 30px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        #ranking-board h3 { color: var(--color-charge); margin-bottom: 10px; font-size: 1.2rem; }
+        
+        .rank-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 1rem;
+        }
+
+        /* Rules Cards */
+        .rule-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 15px;
+            width: 100%;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .rule-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.5); border-color: var(--color-charge); }
+        .rule-title { font-size: 1.5rem; font-weight: 900; color: var(--color-player); margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
+        .rule-badge { font-size: 0.8rem; padding: 3px 8px; border-radius: 12px; background: rgba(255,255,255,0.1); color: #fff; }
+        .rule-desc { font-size: 0.95rem; line-height: 1.4; color: var(--text-muted); }
+
+        /* Matchmaking */
+        .loader {
+            border: 5px solid var(--panel-bg);
+            border-top: 5px solid var(--color-player);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* --- Game Area --- */
+        .player-area { flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; position: relative; z-index: 10; }
+        #cpu-area { border-bottom: 1px solid var(--panel-border); background: linear-gradient(to bottom, rgba(225, 29, 72, 0.1), transparent); }
+        #player-area { border-top: 1px solid var(--panel-border); background: linear-gradient(to top, rgba(6, 182, 212, 0.1), transparent); }
+        
+        .player-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .player-name { font-size: 1.5rem; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; line-height: 1; }
+        #cpu-area .player-name { color: var(--color-cpu); text-shadow: 0 0 10px rgba(225,29,72,0.5); }
+        #player-area .player-name { color: var(--color-player); text-shadow: 0 0 10px rgba(6,182,212,0.5); }
+        
+        .win-streak-badge { font-size: 0.9rem; color: #fbbf24; font-weight: bold; margin-top: 5px; }
+        .penalty-warning { color: var(--color-attack); font-size: 0.85rem; font-weight: 700; display: none; margin-top: 5px; background: rgba(239, 68, 68, 0.2); padding: 2px 8px; border-radius: 4px; }
+        
+        .charge-container { display: flex; gap: 10px; }
+        .charge-pip { width: 20px; height: 20px; border-radius: 50%; background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.2); transition: all 0.3s ease; }
+        .charge-pip.active { background: var(--color-charge); border-color: #fff; box-shadow: 0 0 15px var(--color-charge); transform: scale(1.1); }
+        
+        .action-reveal { font-size: 2rem; font-weight: 900; text-align: center; height: 60px; display: flex; align-items: center; justify-content: center; text-shadow: 0 0 15px rgba(255,255,255,0.3); opacity: 0; transform: translateY(20px); transition: all 0.3s ease; }
+        .action-reveal.show { opacity: 1; transform: translateY(0); }
+        .action-reveal.status-ready { font-size: 1.2rem; color: var(--color-charge); opacity: 1; transform: none; animation: pulse 1s infinite alternate; }
+
+        @keyframes pulse { from { opacity: 0.5; } to { opacity: 1; } }
+
+        #center-area { height: 120px; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; z-index: 5; }
+        #timer { font-size: 3.5rem; font-weight: 900; line-height: 1; color: #fff; text-shadow: 0 0 20px rgba(255,255,255,0.5); font-variant-numeric: tabular-nums; }
+        #timer.warning { color: var(--color-attack); animation: shake 0.5s infinite; }
+
+        @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-5px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-5px); } 100% { transform: translateX(0); } }
+
+        #message { font-size: 1.5rem; font-weight: 700; color: var(--color-barrier); text-transform: uppercase; letter-spacing: 2px; margin-top: 10px; text-shadow: 0 0 10px rgba(59, 130, 246, 0.8); opacity: 0; transition: opacity 0.3s; }
+        #message.show { opacity: 1; }
+
+        .controls { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+        .control-row { display: flex; gap: 10px; width: 100%; }
+        .btn { flex: 1; padding: 15px 5px; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 700; cursor: pointer; color: #fff; background: var(--panel-bg); border: 1px solid var(--panel-border); backdrop-filter: blur(10px); transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .btn:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .btn-charge { background: rgba(16, 185, 129, 0.2); border-color: var(--color-charge); }
+        .btn-barrier { background: rgba(59, 130, 246, 0.2); border-color: var(--color-barrier); }
+        .btn-attack { background: rgba(239, 68, 68, 0.2); border-color: var(--color-attack); }
+        .btn-attack-sp { background: rgba(139, 92, 246, 0.2); border-color: var(--color-attack-sp); box-shadow: 0 0 10px rgba(139,92,246,0.5); }
+        .btn.selected { box-shadow: 0 0 20px currentColor, inset 0 0 20px rgba(255,255,255,0.2); filter: brightness(1.5); transform: scale(1.02); }
+
+        #overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 50px; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(10px); z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.5s ease; }
+        #overlay.active { opacity: 1; pointer-events: all; }
+        #result-title { font-size: 4rem; font-weight: 900; margin-bottom: 10px; text-align: center; text-shadow: 0 0 30px currentColor; }
+        #result-desc { font-size: 1.2rem; color: var(--text-muted); margin-bottom: 20px; text-align: center; }
+        .win-streak-text { font-size: 1.5rem; color: #fbbf24; font-weight: 900; margin-bottom: 30px; }
+        
+        .overlay-btns { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center;}
+        .btn-overlay { padding: 15px 25px; font-size: 1.2rem; background: #fff; color: #000; border-radius: 30px; font-weight: 900; cursor: pointer; border: none; transition: transform 0.2s; }
+        .btn-overlay.secondary { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); }
+        .btn-overlay.social { background: #000; color: #fff; border: 2px solid #fff; display: flex; align-items: center; gap: 10px;}
+        .btn-overlay:hover { transform: scale(1.05); }
+
+        .particle { position: absolute; width: 5px; height: 5px; background: #fff; border-radius: 50%; pointer-events: none; animation: fly 0.5s cubic-bezier(0, .9, .57, 1) forwards; z-index: 200; }
+        @keyframes fly { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; } }
+
+        .win-player { color: var(--color-player); }
+        .win-cpu { color: var(--color-cpu); }
+        .draw { color: #fff; }
+
+        input[type="text"] { width: 100%; padding: 15px; margin-bottom: 20px; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(0,0,0,0.5); color: #fff; font-size: 1.2rem; text-align: center;}
+
+        /* Ad Banner */
+        #ad-banner {
+            width: 100%;
+            height: 50px;
+            background: #000;
+            border-top: 1px solid var(--panel-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            z-index: 150;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+
+    <!-- Start Menu -->
+    <div id="menu-start" class="fullscreen-menu">
+        <h1 class="title">CHARGE BATTLE</h1>
+        <input type="text" id="player-name-input" placeholder="Enter your name" maxlength="10">
+        
+        <div id="ranking-board">
+            <h3>🔥 TOP PLAYERS (WIN STREAKS)</h3>
+            <div id="ranking-list">Loading...</div>
+        </div>
+        
+        <button id="btn-mode-npc" class="btn-large secondary">Play vs CPU</button>
+        <button id="btn-mode-pvp" class="btn-large primary">Online PvP</button>
+    </div>
+
+    <!-- Rule Menu -->
+    <div id="menu-rule" class="fullscreen-menu hidden">
+        <h2 style="margin-bottom: 20px; text-align: center;">SELECT RULE</h2>
+        
+        <div class="rule-card" data-rule="STANDARD">
+            <div class="rule-title">STANDARD <span class="rule-badge">3.0秒</span></div>
+            <div class="rule-desc">昔ながらの基本モード。攻撃の威力は一定で、必ず相殺になります。</div>
+        </div>
+        <div class="rule-card" data-rule="TACTICAL">
+            <div class="rule-title">TACTICAL <span class="rule-badge">3.0秒</span></div>
+            <div class="rule-desc">駆け引き重視。ストックの差で相殺に勝ち、ストック3はバリアを貫通。</div>
+        </div>
+        <div class="rule-card" data-rule="SPEED">
+            <div class="rule-title">SPEED <span class="rule-badge" style="background:var(--color-attack)">1.5秒</span></div>
+            <div class="rule-desc">超短期決戦。ノーアクションを2回出すと即座に反則負けになります。</div>
+        </div>
+        
+        <button id="btn-back-menu" class="btn-large" style="margin-top: 20px; background: transparent;">Back</button>
+    </div>
+
+    <!-- Matchmaking Menu -->
+    <div id="menu-matchmaking" class="fullscreen-menu hidden">
+        <h2 style="text-align: center;">MATCHMAKING...</h2>
+        <div class="loader"></div>
+        <p style="text-align: center; color: var(--text-muted); margin-top: 20px;">Waiting for opponent in <span id="mm-rule-text"></span></p>
+    </div>
+
+    <!-- Game UI -->
+    <div id="cpu-area" class="player-area">
+        <div class="player-header">
+            <div>
+                <div class="player-name" id="opponent-name-label">CPU</div>
+                <div class="penalty-warning" id="cpu-penalty">⚠️ 違反: 0/2</div>
+            </div>
+            <div class="charge-container" id="cpu-charges">
+                <div class="charge-pip"></div>
+                <div class="charge-pip"></div>
+                <div class="charge-pip"></div>
+            </div>
+        </div>
+        <div class="action-reveal" id="cpu-action">?</div>
+    </div>
+
+    <div id="center-area">
+        <div id="timer">3.00</div>
+        <div id="message">FIGHT!</div>
+    </div>
+
+    <div id="player-area" class="player-area">
+        <div class="action-reveal" id="player-action">?</div>
+        
+        <div class="player-header">
+            <div>
+                <div class="player-name">YOU</div>
+                <div class="win-streak-badge" id="win-streak-display">Win Streak: 0</div>
+                <div class="penalty-warning" id="player-penalty">⚠️ 違反: 0/2</div>
+            </div>
+            <div class="charge-container" id="player-charges">
+                <div class="charge-pip"></div>
+                <div class="charge-pip"></div>
+                <div class="charge-pip"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="control-row">
+                <button class="btn btn-charge" id="btn-charge" data-action="CHARGE">溜め</button>
+                <button class="btn btn-barrier" id="btn-barrier" data-action="BARRIER">バリア</button>
+            </div>
+            <div class="control-row">
+                <button class="btn btn-attack" id="btn-atk-1" data-action="ATTACK_1">攻撃(1)</button>
+                <button class="btn btn-attack" id="btn-atk-2" data-action="ATTACK_2">攻撃(2)</button>
+                <button class="btn btn-attack btn-attack-sp" id="btn-atk-3" data-action="ATTACK_3">必殺(3)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay -->
+    <div id="overlay">
+        <h1 id="result-title">YOU WIN</h1>
+        <p id="result-desc">Pierced through barrier!</p>
+        <div class="win-streak-text" id="result-streak">Win Streak: 1</div>
+        <div class="overlay-btns">
+            <button id="btn-restart" class="btn-overlay">NEXT BATTLE</button>
+            <button id="btn-menu" class="btn-overlay secondary">MAIN MENU</button>
+        </div>
+        <button id="btn-share-x" class="btn-overlay social">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            Share on X
+        </button>
+    </div>
+
+    <!-- Ad Banner -->
+    <div id="ad-banner">
+        <span>- ADVERTISEMENT -</span>
+    </div>
+</div>
+
+<script>
+    const socket = io();
+    
+    // --- Constants & Config ---
+    const MAX_CHARGE = 3;
+    const ACTIONS = {
+        CHARGE: { name: '溜め', color: 'var(--color-charge)', cost: 0 },
+        BARRIER: { name: 'バリア', color: 'var(--color-barrier)', cost: 0 },
+        ATTACK_1: { name: '攻撃(1)', color: 'var(--color-attack)', cost: 1 },
+        ATTACK_2: { name: '攻撃(2)', color: 'var(--color-attack)', cost: 2 },
+        ATTACK_3: { name: '必殺(3)', color: 'var(--color-attack-sp)', cost: 3 },
+        NONE: { name: '無防備', color: 'var(--text-muted)', cost: 0 }
+    };
+
+    // --- State ---
+    let state = {
+        mode: 'MENU',
+        playMode: 'NPC', // NPC or PVP
+        currentRule: 'TACTICAL',
+        turnTime: 3.0,
+        playerCharge: 0,
+        cpuCharge: 0,
+        playerAction: null,
+        cpuAction: null,
+        timeLeft: 3.0,
+        timerInterval: null,
+        pNoActionCount: 0,
+        cNoActionCount: 0,
+        winStreak: 0,
+        playerName: 'Guest' + Math.floor(Math.random() * 1000),
+        roomId: null
+    };
+
+    // --- DOM Elements ---
+    const els = {
+        menuStart: document.getElementById('menu-start'),
+        menuRule: document.getElementById('menu-rule'),
+        menuMatchmaking: document.getElementById('menu-matchmaking'),
+        nameInput: document.getElementById('player-name-input'),
+        rankingList: document.getElementById('ranking-list'),
+        btnModeNpc: document.getElementById('btn-mode-npc'),
+        btnModePvp: document.getElementById('btn-mode-pvp'),
+        ruleCards: document.querySelectorAll('.rule-card'),
+        btnBackMenu: document.getElementById('btn-back-menu'),
+        mmRuleText: document.getElementById('mm-rule-text'),
+        
+        timer: document.getElementById('timer'),
+        message: document.getElementById('message'),
+        playerCharges: document.querySelectorAll('#player-charges .charge-pip'),
+        cpuCharges: document.querySelectorAll('#cpu-charges .charge-pip'),
+        playerAction: document.getElementById('player-action'),
+        cpuAction: document.getElementById('cpu-action'),
+        opponentNameLabel: document.getElementById('opponent-name-label'),
+        winStreakDisplay: document.getElementById('win-streak-display'),
+        
+        btnCharge: document.getElementById('btn-charge'),
+        btnBarrier: document.getElementById('btn-barrier'),
+        btnAtk1: document.getElementById('btn-atk-1'),
+        btnAtk2: document.getElementById('btn-atk-2'),
+        btnAtk3: document.getElementById('btn-atk-3'),
+        allBtns: document.querySelectorAll('.btn'),
+        
+        overlay: document.getElementById('overlay'),
+        resultTitle: document.getElementById('result-title'),
+        resultDesc: document.getElementById('result-desc'),
+        resultStreak: document.getElementById('result-streak'),
+        btnRestart: document.getElementById('btn-restart'),
+        btnMenu: document.getElementById('btn-menu'),
+        btnShareX: document.getElementById('btn-share-x'),
+        playerPenalty: document.getElementById('player-penalty'),
+        cpuPenalty: document.getElementById('cpu-penalty')
+    };
+
+    // --- Init ---
+    function init() {
+        els.nameInput.value = state.playerName;
+        els.nameInput.addEventListener('change', (e) => {
+            if (e.target.value.trim() !== '') {
+                state.playerName = e.target.value.trim();
+            }
+        });
+
+        // Socket Listeners
+        socket.on('update_rankings', renderRankings);
+        socket.on('match_found', ({ rule, roomId }) => {
+            els.menuMatchmaking.classList.add('hidden');
+            state.roomId = roomId;
+            els.opponentNameLabel.textContent = "OPPONENT";
+            // Reset game state for new match
+            state.playerCharge = 0;
+            state.cpuCharge = 0;
+            state.pNoActionCount = 0;
+            state.cNoActionCount = 0;
+            updateChargesUI();
+            if (state.currentRule === 'SPEED') updatePenaltyUI();
+        });
+        socket.on('start_turn', () => {
+            if (state.playMode === 'PVP') {
+                els.overlay.classList.remove('active');
+                startNextTurn();
+            }
+        });
+        socket.on('resolve_turn', (actions) => {
+            if (state.playMode === 'PVP') {
+                state.mode = 'RESOLVING';
+                clearInterval(state.timerInterval);
+                state.timeLeft = 0;
+                updateTimerUI();
+                updateButtonStates();
+
+                let p2Act = 'NONE';
+                for (const [id, act] of Object.entries(actions)) {
+                    if (id !== socket.id) {
+                        p2Act = act;
+                    } else {
+                        state.playerAction = act;
+                    }
+                }
+                state.cpuAction = p2Act;
+                if (!state.playerAction) state.playerAction = 'NONE';
+                resolveBattle();
+            }
+        });
+        socket.on('opponent_disconnected', () => {
+            if (state.playMode === 'PVP') {
+                alert("Opponent disconnected!");
+                showMainMenu();
+            }
+        });
+
+        // Menu Listeners
+        els.btnModeNpc.addEventListener('click', () => showRuleMenu('NPC'));
+        els.btnModePvp.addEventListener('click', () => showRuleMenu('PVP'));
+        els.btnBackMenu.addEventListener('click', showMainMenu);
+
+        els.ruleCards.forEach(card => {
+            card.addEventListener('click', () => {
+                selectRule(card.dataset.rule);
+            });
+        });
+
+        // Overlay Listeners
+        els.btnRestart.addEventListener('click', () => {
+            if (state.playMode === 'NPC') {
+                startGame();
+            } else {
+                // In PVP, we ask server for next turn
+                socket.emit('start_next_turn', { roomId: getRoomIdFromSocket() });
+                els.overlay.classList.remove('active');
+                showMessage("WAITING FOR OPPONENT...", "var(--text-muted)");
+            }
+        });
+        els.btnMenu.addEventListener('click', showMainMenu);
+        els.btnShareX.addEventListener('click', shareOnX);
+        
+        // Game Listeners
+        els.allBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (state.mode !== 'PLAYING') return;
+                const action = btn.dataset.action;
+                if (!canUseAction(action, state.playerCharge)) return;
+                
+                state.playerAction = action;
+                updateButtonStates();
+                els.playerAction.textContent = "READY";
+                els.playerAction.className = "action-reveal status-ready show";
+                
+                if (state.playMode === 'PVP') {
+                    // Emit action to server immediately. Game loops local timer until 0 or server force resolves
+                    // Wait, we send action, but timer still runs? The timer hitting 0 triggers forceResolveTurn locally.
+                    // Instead, in PVP, we just send to server and wait for 'resolve_turn'
+                    socket.emit('submit_action', { roomId: getRoomIdFromSocket(), action: state.playerAction });
+                } else {
+                    checkEarlyResolveNPC();
+                }
+            });
+        });
+    }
+
+    function getRoomIdFromSocket() {
+        return state.roomId; 
+    }
+
+    function renderRankings(rankings) {
+        els.rankingList.innerHTML = '';
+        
+        const tactical = rankings.filter(r => r.rule === 'TACTICAL');
+        const speed = rankings.filter(r => r.rule === 'SPEED');
+        
+        let html = '<h4 style="color:var(--color-player); margin-bottom: 5px;">🔵 TACTICAL</h4>';
+        if(tactical.length === 0) html += '<div class="rank-item" style="color:var(--text-muted)">No rankings yet</div>';
+        tactical.forEach((r, i) => html += `<div class="rank-item"><span>#${i + 1} ${r.name}</span> <span style="color:var(--color-charge);font-weight:bold;">${r.winStreak} WINS</span></div>`);
+        
+        html += '<h4 style="color:var(--color-attack); margin-top: 15px; margin-bottom: 5px;">🔴 SPEED</h4>';
+        if(speed.length === 0) html += '<div class="rank-item" style="color:var(--text-muted)">No rankings yet</div>';
+        speed.forEach((r, i) => html += `<div class="rank-item"><span>#${i + 1} ${r.name}</span> <span style="color:var(--color-charge);font-weight:bold;">${r.winStreak} WINS</span></div>`);
+        
+        els.rankingList.innerHTML = html;
+    }
+
+    function showMainMenu() {
+        state.mode = 'MENU';
+        els.overlay.classList.remove('active');
+        els.menuStart.classList.remove('hidden');
+        els.menuRule.classList.add('hidden');
+        els.menuMatchmaking.classList.add('hidden');
+        // If we disconnect from a game
+        state.roomId = null;
+        state.winStreak = 0;
+        updateWinStreakUI();
+    }
+
+    function showRuleMenu(playMode) {
+        state.playMode = playMode;
+        els.menuStart.classList.add('hidden');
+        els.menuRule.classList.remove('hidden');
+    }
+
+    function selectRule(rule) {
+        state.currentRule = rule;
+        state.turnTime = (rule === 'SPEED') ? 1.5 : 3.0;
+        
+        // Adjust UI
+        if (rule === 'STANDARD') {
+            els.btnAtk1.textContent = '攻撃';
+            ACTIONS.ATTACK_1.name = '攻撃';
+            els.btnAtk2.style.display = 'none';
+            els.btnAtk3.style.display = 'none';
+            els.playerPenalty.style.display = 'none';
+            els.cpuPenalty.style.display = 'none';
+        } else {
+            els.btnAtk1.textContent = '攻撃(1)';
+            ACTIONS.ATTACK_1.name = '攻撃(1)';
+            els.btnAtk2.style.display = 'flex';
+            els.btnAtk3.style.display = 'flex';
+            
+            if (rule === 'SPEED') {
+                els.playerPenalty.style.display = 'block';
+                els.cpuPenalty.style.display = 'block';
+            } else {
+                els.playerPenalty.style.display = 'none';
+                els.cpuPenalty.style.display = 'none';
+            }
+        }
+        
+        els.menuRule.classList.add('hidden');
+
+        if (state.playMode === 'PVP') {
+            els.menuMatchmaking.classList.remove('hidden');
+            els.mmRuleText.textContent = rule + " MODE";
+            socket.emit('join_queue', { rule });
+            els.opponentNameLabel.textContent = "OPPONENT";
+        } else {
+            els.opponentNameLabel.textContent = "CPU";
+            startGame();
+        }
+    }
+
+    function startGame() {
+        state.playerCharge = 0;
+        state.cpuCharge = 0;
+        state.pNoActionCount = 0;
+        state.cNoActionCount = 0;
+        els.overlay.classList.remove('active');
+        
+        if (state.currentRule === 'SPEED') updatePenaltyUI();
+        
+        startNextTurn();
+    }
+
+    function startNextTurn() {
+        state.mode = 'PLAYING';
+        state.playerAction = null;
+        state.cpuAction = null;
+        state.timeLeft = state.turnTime;
+        
+        updateChargesUI();
+        updateButtonStates();
+        updateWinStreakUI();
+        
+        els.playerAction.className = "action-reveal";
+        els.cpuAction.className = "action-reveal";
+        
+        els.timer.classList.remove('warning');
+        showMessage("SELECT ACTION", "var(--text-main)");
+        
+        if (state.playMode === 'NPC') {
+            const cpuDecisionTime = Math.random() * (state.turnTime - 0.2) * 1000;
+            setTimeout(() => {
+                if (state.mode === 'PLAYING') {
+                    state.cpuAction = decideCpuAction();
+                    els.cpuAction.textContent = "READY";
+                    els.cpuAction.className = "action-reveal status-ready show";
+                    checkEarlyResolveNPC();
+                }
+            }, cpuDecisionTime);
+        }
+
+        clearInterval(state.timerInterval);
+        state.timerInterval = setInterval(() => {
+            state.timeLeft -= 0.01;
+            if (state.timeLeft <= 0) {
+                state.timeLeft = 0;
+                forceResolveTurn();
+            }
+            updateTimerUI();
+        }, 10);
+    }
+
+    function checkEarlyResolveNPC() {
+        if (state.playMode === 'NPC' && state.playerAction && state.cpuAction) {
+            forceResolveTurn();
+        }
+    }
+
+    function forceResolveTurn() {
+        if (state.mode !== 'PLAYING') return;
+        state.mode = 'RESOLVING';
+        clearInterval(state.timerInterval);
+        state.timeLeft = 0;
+        updateTimerUI();
+
+        if (!state.playerAction) state.playerAction = 'NONE';
+
+        updateButtonStates(); // Disable all
+
+        if (state.playMode === 'NPC') {
+            if (!state.cpuAction) state.cpuAction = 'NONE';
+            resolveBattle();
+        } else {
+            // PVP mode: if timer hits 0 and we haven't submitted, submit NONE
+            // If we already submitted, server will eventually send resolve_turn
+            if (state.playerAction === 'NONE') {
+                socket.emit('submit_action', { roomId: getRoomIdFromSocket(), action: 'NONE' });
+            }
+            showMessage("WAITING...", "var(--text-muted)");
+        }
+    }
+
+    function resolveBattle() {
+        const pAct = state.playerAction;
+        const cAct = state.cpuAction;
+
+        revealAction(els.playerAction, pAct);
+        revealAction(els.cpuAction, cAct);
+
+        let pAtk = pAct.startsWith('ATTACK') ? ACTIONS[pAct].cost : 0;
+        let cAtk = cAct.startsWith('ATTACK') ? ACTIONS[cAct].cost : 0;
+
+        if (state.currentRule === 'STANDARD') {
+            if (pAtk > 0) pAtk = 1;
+            if (cAtk > 0) cAtk = 1;
+        }
+
+        if (pAct === 'CHARGE') state.playerCharge = Math.min(MAX_CHARGE, state.playerCharge + 1);
+        if (cAct === 'CHARGE') state.cpuCharge = Math.min(MAX_CHARGE, state.cpuCharge + 1);
+        if (pAtk > 0) state.playerCharge -= pAtk;
+        if (cAtk > 0) state.cpuCharge -= cAtk;
+
+        updateChargesUI();
+
+        if (state.currentRule === 'SPEED') {
+            if (pAct === 'NONE') state.pNoActionCount++;
+            if (cAct === 'NONE') state.cNoActionCount++;
+            updatePenaltyUI();
+        }
+
+        setTimeout(() => {
+            let pWin = false;
+            let cWin = false;
+            let msg = "";
+            let desc = "";
+
+            if (state.currentRule === 'SPEED') {
+                if (state.pNoActionCount >= 2 && state.cNoActionCount >= 2) {
+                    msg = "DOUBLE FOUL!"; desc = "両者ノーアクション上限到達";
+                    pWin = true; cWin = true; 
+                } else if (state.pNoActionCount >= 2) {
+                    cWin = true; msg = "FOUL!"; desc = "ノーアクション2回による反則負け";
+                } else if (state.cNoActionCount >= 2) {
+                    pWin = true; msg = "OPPONENT FOUL!"; desc = "相手がノーアクション上限到達";
+                }
+            }
+
+            if (!pWin && !cWin) {
+                if (pAtk > 0 && cAtk > 0) {
+                    createParticles(els.playerAction, els.cpuAction, 'var(--color-attack)');
+                    if (state.currentRule === 'STANDARD') {
+                        msg = "CLASH!"; desc = "お互いの攻撃が相殺されました";
+                    } else {
+                        if (pAtk > cAtk) { pWin = true; msg = "YOU WIN!"; desc = "パワー差で打ち勝ちました！"; }
+                        else if (cAtk > pAtk) { cWin = true; msg = "OPPONENT WINS!"; desc = "パワー差で負けました..."; }
+                        else { msg = "CLASH!"; desc = "同パワーにより相殺されました"; }
+                    }
+                } else {
+                    if (pAtk > 0) {
+                        createParticles(els.playerAction, els.cpuAction, 'var(--color-player)');
+                        if (cAct === 'CHARGE' || cAct === 'NONE') {
+                            pWin = true; msg = "YOU WIN!"; desc = "相手の隙を突きました！";
+                        } else if (cAct === 'BARRIER') {
+                            if (state.currentRule !== 'STANDARD' && pAtk === 3) {
+                                pWin = true; msg = "YOU WIN!"; desc = "バリアを貫通しました！";
+                            } else {
+                                msg = "BLOCKED!"; desc = "バリアで防がれました";
+                            }
+                        }
+                    }
+                    if (cAtk > 0) {
+                        createParticles(els.cpuAction, els.playerAction, 'var(--color-cpu)');
+                        if (pAct === 'CHARGE' || pAct === 'NONE') {
+                            cWin = true; msg = "OPPONENT WINS!"; desc = "隙を突かれました...";
+                        } else if (pAct === 'BARRIER') {
+                            if (state.currentRule !== 'STANDARD' && cAtk === 3) {
+                                cWin = true; msg = "OPPONENT WINS!"; desc = "バリアを貫通されました...";
+                            } else {
+                                msg = "BLOCKED!"; desc = "バリアで防ぎました！";
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!pAtk && !cAtk && !pWin && !cWin) {
+                msg = "NEXT TURN";
+            }
+
+            showMessage(msg, 'var(--text-main)');
+
+            setTimeout(() => {
+                if (pWin && cWin) endGame('DRAW', desc);
+                else if (pWin) endGame('PLAYER', desc);
+                else if (cWin) endGame('CPU', desc);
+                else {
+                    if(state.playMode === 'NPC') startNextTurn();
+                    else {
+                        // PvP will wait for start_turn from server
+                        socket.emit('start_next_turn', { roomId: getRoomIdFromSocket() });
+                    }
+                }
+            }, 1500);
+
+        }, 800);
+    }
+
+    // --- AI / Helpers ---
+
+    function decideCpuAction() {
+        const available = ['CHARGE', 'BARRIER'];
+        if (state.currentRule === 'STANDARD') {
+            if (state.cpuCharge >= 1) available.push('ATTACK_1');
+            if (state.cpuCharge >= 1 && state.playerCharge >= 1) {
+                if (Math.random() < 0.4) return 'ATTACK_1';
+                if (Math.random() < 0.3) return 'BARRIER';
+            }
+        } else {
+            if (state.cpuCharge >= 1) available.push('ATTACK_1');
+            if (state.cpuCharge >= 2) available.push('ATTACK_2');
+            if (state.cpuCharge >= 3) available.push('ATTACK_3');
+
+            if (state.cpuCharge === 3 && Math.random() < 0.6) return 'ATTACK_3';
+            if (state.playerCharge >= 2) {
+                if (Math.random() < 0.5) return 'BARRIER';
+                if (state.cpuCharge >= 1 && Math.random() < 0.5) return `ATTACK_${state.cpuCharge}`;
+            }
+        }
+        return available[Math.floor(Math.random() * available.length)];
+    }
+
+    function canUseAction(action, chargeLevel) {
+        if (action === 'CHARGE' && chargeLevel >= MAX_CHARGE) return false;
+        if (action.startsWith('ATTACK')) {
+            const cost = ACTIONS[action].cost;
+            if (chargeLevel < cost) return false;
+        }
+        return true;
+    }
+
+    function updateButtonStates() {
+        els.allBtns.forEach(btn => {
+            const action = btn.dataset.action;
+            btn.classList.remove('selected');
+            
+            if (state.mode !== 'PLAYING') {
+                btn.disabled = true;
+                if (state.playerAction === action) btn.classList.add('selected');
+            } else {
+                btn.disabled = !canUseAction(action, state.playerCharge);
+                if (state.playerAction === action) btn.classList.add('selected');
+            }
+        });
+    }
+
+    function updateChargesUI() {
+        els.playerCharges.forEach((pip, i) => { pip.classList.toggle('active', i < state.playerCharge); });
+        els.cpuCharges.forEach((pip, i) => { pip.classList.toggle('active', i < state.cpuCharge); });
+    }
+    
+    function updatePenaltyUI() {
+        els.playerPenalty.textContent = `⚠️ 違反: ${state.pNoActionCount}/2`;
+        els.cpuPenalty.textContent = `⚠️ 違反: ${state.cNoActionCount}/2`;
+        if (state.pNoActionCount > 0) els.playerPenalty.style.color = '#fff';
+        if (state.cNoActionCount > 0) els.cpuPenalty.style.color = '#fff';
+    }
+    
+    function updateWinStreakUI() {
+        els.winStreakDisplay.textContent = `Win Streak: ${state.winStreak}`;
+        if (state.winStreak > 0) {
+            els.winStreakDisplay.style.color = '#fbbf24';
+            els.winStreakDisplay.style.textShadow = '0 0 10px rgba(251, 191, 36, 0.5)';
+        } else {
+            els.winStreakDisplay.style.color = 'var(--text-muted)';
+            els.winStreakDisplay.style.textShadow = 'none';
+        }
+    }
+
+    function updateTimerUI() {
+        els.timer.textContent = state.timeLeft.toFixed(2);
+        if (state.timeLeft <= 1.0 && state.mode === 'PLAYING') els.timer.classList.add('warning');
+        else els.timer.classList.remove('warning');
+    }
+
+    function revealAction(element, action) {
+        if(!action) return;
+        const actionData = ACTIONS[action];
+        if(!actionData) return;
+        element.textContent = actionData.name;
+        element.style.color = actionData.color;
+        element.className = "action-reveal show";
+    }
+
+    function showMessage(text, color = "var(--text-main)") {
+        els.message.textContent = text;
+        els.message.style.color = color;
+        els.message.classList.remove('show');
+        void els.message.offsetWidth;
+        els.message.classList.add('show');
+    }
+
+    function endGame(winner, desc) {
+        state.mode = 'GAMEOVER';
+        els.resultDesc.textContent = desc;
+        
+        if (winner === 'PLAYER') {
+            els.resultTitle.textContent = "YOU WIN";
+            els.resultTitle.className = "win-player";
+            state.winStreak++;
+            
+            // Submit score to ranking
+            if (state.winStreak >= 1) {
+                socket.emit('submit_score', { name: state.playerName, winStreak: state.winStreak, rule: state.currentRule });
+            }
+        } else if (winner === 'CPU') {
+            els.resultTitle.textContent = "YOU LOSE";
+            els.resultTitle.className = "win-cpu";
+            state.winStreak = 0;
+        } else {
+            els.resultTitle.textContent = "DRAW";
+            els.resultTitle.className = "draw";
+            // streak remains unchanged
+        }
+        
+        updateWinStreakUI();
+        els.resultStreak.textContent = `Current Win Streak: ${state.winStreak}`;
+        
+        // Show/Hide Next Battle depending on mode if needed.
+        // For now, in PvP, "NEXT BATTLE" will mean another round in same room if implemented, 
+        // but we'll just allow them to queue again or return to menu.
+        els.btnRestart.textContent = state.playMode === 'PVP' ? "PLAY AGAIN (RE-QUEUE)" : "PLAY AGAIN";
+        els.overlay.classList.add('active');
+        
+        // Handle PvP Re-queue logic hack
+        if(state.playMode === 'PVP') {
+            els.btnRestart.onclick = () => {
+                els.overlay.classList.remove('active');
+                els.menuStart.classList.add('hidden');
+                els.menuRule.classList.add('hidden');
+                els.menuMatchmaking.classList.remove('hidden');
+                els.mmRuleText.textContent = state.currentRule + " MODE";
+                socket.emit('join_queue', { rule: state.currentRule });
+            }
+        } else {
+            els.btnRestart.onclick = startGame;
+        }
+    }
+
+    function createParticles(fromEl, toEl, color) {
+        const fromRect = fromEl.getBoundingClientRect();
+        const toRect = toEl.getBoundingClientRect();
+        
+        const startX = fromRect.left + fromRect.width / 2;
+        const startY = fromRect.top + fromRect.height / 2;
+        const endX = toRect.left + toRect.width / 2;
+        const endY = toRect.top + toRect.height / 2;
+
+        for (let i = 0; i < 15; i++) {
+            const p = document.createElement('div');
+            p.className = 'particle';
+            p.style.backgroundColor = color;
+            p.style.left = startX + 'px';
+            p.style.top = startY + 'px';
+            
+            const tx = (endX - startX) + (Math.random() - 0.5) * 50;
+            const ty = (endY - startY) + (Math.random() - 0.5) * 50;
+            
+            p.style.setProperty('--tx', `${tx}px`);
+            p.style.setProperty('--ty', `${ty}px`);
+            
+            document.body.appendChild(p);
+            setTimeout(() => p.remove(), 500);
+        }
+    }
+
+    function shareOnX() {
+        const text = `CHARGE BATTLEで${state.winStreak}連勝しました！%0a手に汗握る心理戦を体験しよう！%0a%23ChargeBattle`;
+        const url = `https://twitter.com/intent/tweet?text=${text}`;
+        window.open(url, '_blank');
+    }
+
+    init();
+</script>
+
+</body>
+</html>

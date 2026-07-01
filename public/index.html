@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Charge Battle Online</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+    <title>「溜め」「バリア」「攻撃」</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=Noto+Sans-JP:wght@400;700;900&display=swap" rel="stylesheet">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1704555056353726" crossorigin="anonymous"></script>
     <script src="/socket.io/socket.io.js"></script>
     <style>
@@ -118,18 +118,18 @@
         .btn-large.secondary { border-color: var(--color-charge); }
 
         /* Ranking Board */
-        #ranking-board {
+        #ranking-board, #blackhole-board {
             width: 100%;
             background: rgba(0,0,0,0.5);
             border: 1px solid var(--panel-border);
             border-radius: 12px;
             padding: 15px;
-            margin-bottom: 30px;
+            margin-bottom: 10px;
             max-height: 200px;
             overflow-y: auto;
         }
         
-        #ranking-board h3 { color: var(--color-charge); margin-bottom: 10px; font-size: 1.2rem; }
+        #ranking-board h3, #blackhole-board h3 { color: var(--color-charge); margin-bottom: 10px; font-size: 1.2rem; }
         
         .rank-item {
             display: flex;
@@ -230,7 +230,38 @@
         .win-cpu { color: var(--color-cpu); }
         .draw { color: #fff; }
 
-        input[type="text"] { width: 100%; padding: 15px; margin-bottom: 20px; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(0,0,0,0.5); color: #fff; font-size: 1.2rem; text-align: center;}
+        .name-input-container {
+            width: 100%;
+            margin-bottom: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .name-label {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--color-player);
+            text-align: left;
+            padding-left: 5px;
+        }
+        input[type="text"] { 
+            width: 100%; 
+            padding: 15px; 
+            border-radius: 12px; 
+            border: 2px solid var(--panel-border); 
+            background: rgba(0,0,0,0.6); 
+            color: #fff; 
+            font-size: 1.3rem; 
+            font-weight: bold;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--color-player);
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.5);
+            background: rgba(0,0,0,0.9);
+        }
 
         /* Ad Banner */
         #ad-banner {
@@ -254,12 +285,21 @@
 
     <!-- Start Menu -->
     <div id="menu-start" class="fullscreen-menu">
-        <h1 class="title">CHARGE BATTLE</h1>
-        <input type="text" id="player-name-input" placeholder="Enter your name" maxlength="10">
+        <h1 class="title">「溜め」「バリア」「攻撃」</h1>
+        
+        <div class="name-input-container">
+            <label for="player-name-input" class="name-label">👤 PLAYER NAME</label>
+            <input type="text" id="player-name-input" placeholder="名前を入力（10文字まで）" maxlength="10">
+        </div>
         
         <div id="ranking-board">
             <h3>🔥 TOP PLAYERS (WIN STREAKS)</h3>
             <div id="ranking-list">Loading...</div>
+        </div>
+        
+        <div id="blackhole-board" style="margin-top: 20px;">
+            <h3>🌌 BLACK HOLE MASTERS</h3>
+            <div id="blackhole-list">Loading...</div>
         </div>
         
         <button id="btn-mode-npc" class="btn-large secondary">Play vs CPU</button>
@@ -298,9 +338,12 @@
         <div class="player-header">
             <div>
                 <div class="player-name" id="opponent-name-label">CPU</div>
+                <div class="win-streak-badge" id="cpu-win-streak-display"></div>
                 <div class="penalty-warning" id="cpu-penalty">⚠️ 違反: 0/2</div>
             </div>
             <div class="charge-container" id="cpu-charges">
+                <div class="charge-pip"></div>
+                <div class="charge-pip"></div>
                 <div class="charge-pip"></div>
                 <div class="charge-pip"></div>
                 <div class="charge-pip"></div>
@@ -327,6 +370,8 @@
                 <div class="charge-pip"></div>
                 <div class="charge-pip"></div>
                 <div class="charge-pip"></div>
+                <div class="charge-pip"></div>
+                <div class="charge-pip"></div>
             </div>
         </div>
 
@@ -338,7 +383,7 @@
             <div class="control-row">
                 <button class="btn btn-attack" id="btn-atk-1" data-action="ATTACK_1">攻撃(1)</button>
                 <button class="btn btn-attack" id="btn-atk-2" data-action="ATTACK_2">攻撃(2)</button>
-                <button class="btn btn-attack btn-attack-sp" id="btn-atk-3" data-action="ATTACK_3">必殺(3)</button>
+                <button class="btn btn-attack btn-attack-sp" id="btn-atk-3" data-action="BLACK_HOLE">ブラックホール(5)</button>
             </div>
         </div>
     </div>
@@ -368,13 +413,13 @@
     const socket = io();
     
     // --- Constants & Config ---
-    const MAX_CHARGE = 3;
+    const MAX_CHARGE = 5;
     const ACTIONS = {
         CHARGE: { name: '溜め', color: 'var(--color-charge)', cost: 0 },
         BARRIER: { name: 'バリア', color: 'var(--color-barrier)', cost: 0 },
         ATTACK_1: { name: '攻撃(1)', color: 'var(--color-attack)', cost: 1 },
         ATTACK_2: { name: '攻撃(2)', color: 'var(--color-attack)', cost: 2 },
-        ATTACK_3: { name: '必殺(3)', color: 'var(--color-attack-sp)', cost: 3 },
+        BLACK_HOLE: { name: 'ﾌﾞﾗｯｸﾎｰﾙ', color: 'var(--color-attack-sp)', cost: 5 },
         NONE: { name: '無防備', color: 'var(--text-muted)', cost: 0 }
     };
 
@@ -394,7 +439,8 @@
         cNoActionCount: 0,
         winStreak: 0,
         playerName: 'Guest' + Math.floor(Math.random() * 1000),
-        roomId: null
+        roomId: null,
+        turnCount: 1
     };
 
     // --- DOM Elements ---
@@ -404,6 +450,7 @@
         menuMatchmaking: document.getElementById('menu-matchmaking'),
         nameInput: document.getElementById('player-name-input'),
         rankingList: document.getElementById('ranking-list'),
+        blackholeList: document.getElementById('blackhole-list'),
         btnModeNpc: document.getElementById('btn-mode-npc'),
         btnModePvp: document.getElementById('btn-mode-pvp'),
         ruleCards: document.querySelectorAll('.rule-card'),
@@ -417,6 +464,7 @@
         playerAction: document.getElementById('player-action'),
         cpuAction: document.getElementById('cpu-action'),
         opponentNameLabel: document.getElementById('opponent-name-label'),
+        cpuWinStreakDisplay: document.getElementById('cpu-win-streak-display'),
         winStreakDisplay: document.getElementById('win-streak-display'),
         
         btnCharge: document.getElementById('btn-charge'),
@@ -448,15 +496,41 @@
 
         // Socket Listeners
         socket.on('update_rankings', renderRankings);
-        socket.on('match_found', ({ rule, roomId }) => {
+        socket.on('update_blackholes', renderBlackholes);
+        socket.on('match_found', ({ rule, roomId, players }) => {
             els.menuMatchmaking.classList.add('hidden');
             state.roomId = roomId;
-            els.opponentNameLabel.textContent = "OPPONENT";
-            // Reset game state for new match
+            
+            if (players) {
+                let opp = null;
+                for (let id in players) {
+                    if (id !== socket.id) {
+                        opp = players[id];
+                    }
+                }
+                if (opp) {
+                    els.opponentNameLabel.textContent = opp.name;
+                    els.cpuWinStreakDisplay.textContent = `Win Streak: ${opp.winStreak}`;
+                    if (opp.winStreak > 0) {
+                        els.cpuWinStreakDisplay.style.color = '#fbbf24';
+                        els.cpuWinStreakDisplay.style.textShadow = '0 0 10px rgba(251, 191, 36, 0.5)';
+                    } else {
+                        els.cpuWinStreakDisplay.style.color = 'var(--text-muted)';
+                        els.cpuWinStreakDisplay.style.textShadow = 'none';
+                    }
+                }
+            } else {
+                els.opponentNameLabel.textContent = "OPPONENT";
+                els.cpuWinStreakDisplay.textContent = "Win Streak: 0";
+                els.cpuWinStreakDisplay.style.color = 'var(--text-muted)';
+                els.cpuWinStreakDisplay.style.textShadow = 'none';
+            }
+
             state.playerCharge = 0;
             state.cpuCharge = 0;
             state.pNoActionCount = 0;
             state.cNoActionCount = 0;
+            state.turnCount = 1;
             updateChargesUI();
             if (state.currentRule === 'SPEED') updatePenaltyUI();
         });
@@ -510,7 +584,6 @@
             if (state.playMode === 'NPC') {
                 startGame();
             } else {
-                // In PVP, we ask server for next turn
                 socket.emit('start_next_turn', { roomId: getRoomIdFromSocket() });
                 els.overlay.classList.remove('active');
                 showMessage("WAITING FOR OPPONENT...", "var(--text-muted)");
@@ -532,9 +605,6 @@
                 els.playerAction.className = "action-reveal status-ready show";
                 
                 if (state.playMode === 'PVP') {
-                    // Emit action to server immediately. Game loops local timer until 0 or server force resolves
-                    // Wait, we send action, but timer still runs? The timer hitting 0 triggers forceResolveTurn locally.
-                    // Instead, in PVP, we just send to server and wait for 'resolve_turn'
                     socket.emit('submit_action', { roomId: getRoomIdFromSocket(), action: state.playerAction });
                 } else {
                     checkEarlyResolveNPC();
@@ -564,13 +634,25 @@
         els.rankingList.innerHTML = html;
     }
 
+    function renderBlackholes(list) {
+        els.blackholeList.innerHTML = '';
+        if (list.length === 0) {
+            els.blackholeList.innerHTML = '<div class="rank-item" style="color:var(--text-muted)">No masters yet.</div>';
+            return;
+        }
+        let html = '';
+        [...list].reverse().forEach((r) => {
+            html += `<div class="rank-item"><span>${r.name}</span> <span style="color:var(--color-attack-sp);font-weight:bold;">ACHIEVED!</span></div>`;
+        });
+        els.blackholeList.innerHTML = html;
+    }
+
     function showMainMenu() {
         state.mode = 'MENU';
         els.overlay.classList.remove('active');
         els.menuStart.classList.remove('hidden');
         els.menuRule.classList.add('hidden');
         els.menuMatchmaking.classList.add('hidden');
-        // If we disconnect from a game
         state.roomId = null;
         state.winStreak = 0;
         updateWinStreakUI();
@@ -586,12 +668,11 @@
         state.currentRule = rule;
         state.turnTime = (rule === 'SPEED') ? 1.5 : 3.0;
         
-        // Adjust UI
         if (rule === 'STANDARD') {
             els.btnAtk1.textContent = '攻撃';
             ACTIONS.ATTACK_1.name = '攻撃';
             els.btnAtk2.style.display = 'none';
-            els.btnAtk3.style.display = 'none';
+            els.btnAtk3.style.display = 'flex'; // Black Hole is universal
             els.playerPenalty.style.display = 'none';
             els.cpuPenalty.style.display = 'none';
         } else {
@@ -614,10 +695,13 @@
         if (state.playMode === 'PVP') {
             els.menuMatchmaking.classList.remove('hidden');
             els.mmRuleText.textContent = rule + " MODE";
-            socket.emit('join_queue', { rule });
+            socket.emit('join_queue', { rule: state.currentRule, name: state.playerName, winStreak: state.winStreak });
             els.opponentNameLabel.textContent = "OPPONENT";
         } else {
             els.opponentNameLabel.textContent = "CPU";
+            els.cpuWinStreakDisplay.textContent = "Win Streak: 0";
+            els.cpuWinStreakDisplay.style.color = 'var(--text-muted)';
+            els.cpuWinStreakDisplay.style.textShadow = 'none';
             startGame();
         }
     }
@@ -627,6 +711,7 @@
         state.cpuCharge = 0;
         state.pNoActionCount = 0;
         state.cNoActionCount = 0;
+        state.turnCount = 1;
         els.overlay.classList.remove('active');
         
         if (state.currentRule === 'SPEED') updatePenaltyUI();
@@ -651,10 +736,10 @@
         showMessage("SELECT ACTION", "var(--text-main)");
         
         if (state.playMode === 'NPC') {
+            determineCpuAction();
             const cpuDecisionTime = Math.random() * (state.turnTime - 0.2) * 1000;
             setTimeout(() => {
                 if (state.mode === 'PLAYING') {
-                    state.cpuAction = decideCpuAction();
                     els.cpuAction.textContent = "READY";
                     els.cpuAction.className = "action-reveal status-ready show";
                     checkEarlyResolveNPC();
@@ -679,6 +764,45 @@
         }
     }
 
+    function determineCpuAction() {
+        if (state.playMode === 'PVP') return;
+
+        if (state.turnCount === 1) {
+            state.cpuAction = 'CHARGE';
+            return;
+        }
+
+        const available = ['CHARGE', 'BARRIER'];
+        if (state.cpuCharge >= 5) available.push('BLACK_HOLE');
+
+        if (state.currentRule === 'STANDARD') {
+            if (state.cpuCharge >= 1) available.push('ATTACK_1');
+            
+            if (state.cpuCharge === 5 && Math.random() < 0.8) { state.cpuAction = 'BLACK_HOLE'; return; }
+            
+            if (state.cpuCharge >= 1 && state.playerCharge >= 1) {
+                if (Math.random() < 0.4) { state.cpuAction = 'ATTACK_1'; return; }
+                if (Math.random() < 0.3) { state.cpuAction = 'BARRIER'; return; }
+            }
+        } else {
+            if (state.cpuCharge >= 1) available.push('ATTACK_1');
+            if (state.cpuCharge >= 2) available.push('ATTACK_2');
+
+            if (state.cpuCharge === 5 && Math.random() < 0.8) { state.cpuAction = 'BLACK_HOLE'; return; }
+            
+            if (state.playerCharge >= 2) {
+                if (Math.random() < 0.5) { state.cpuAction = 'BARRIER'; return; }
+                if (state.cpuCharge >= 1 && Math.random() < 0.5) { 
+                    const atks = ['ATTACK_1'];
+                    if (state.cpuCharge >= 2) atks.push('ATTACK_2');
+                    state.cpuAction = atks[Math.floor(Math.random() * atks.length)];
+                    return; 
+                }
+            }
+        }
+        state.cpuAction = available[Math.floor(Math.random() * available.length)];
+    }
+
     function forceResolveTurn() {
         if (state.mode !== 'PLAYING') return;
         state.mode = 'RESOLVING';
@@ -691,7 +815,7 @@
         updateButtonStates(); // Disable all
 
         if (state.playMode === 'NPC') {
-            if (!state.cpuAction) state.cpuAction = 'NONE';
+            if (!state.cpuAction) determineCpuAction();
             resolveBattle();
         } else {
             // PVP mode: if timer hits 0 and we haven't submitted, submit NONE
@@ -710,18 +834,21 @@
         revealAction(els.playerAction, pAct);
         revealAction(els.cpuAction, cAct);
 
-        let pAtk = pAct.startsWith('ATTACK') ? ACTIONS[pAct].cost : 0;
-        let cAtk = cAct.startsWith('ATTACK') ? ACTIONS[cAct].cost : 0;
+        let pCost = (pAct.startsWith('ATTACK') || pAct === 'BLACK_HOLE') ? ACTIONS[pAct].cost : 0;
+        let cCost = (cAct.startsWith('ATTACK') || cAct === 'BLACK_HOLE') ? ACTIONS[cAct].cost : 0;
+
+        let pDmg = pCost;
+        let cDmg = cCost;
 
         if (state.currentRule === 'STANDARD') {
-            if (pAtk > 0) pAtk = 1;
-            if (cAtk > 0) cAtk = 1;
+            if (pDmg > 0 && pAct !== 'BLACK_HOLE') pDmg = 1;
+            if (cDmg > 0 && cAct !== 'BLACK_HOLE') cDmg = 1;
         }
 
         if (pAct === 'CHARGE') state.playerCharge = Math.min(MAX_CHARGE, state.playerCharge + 1);
         if (cAct === 'CHARGE') state.cpuCharge = Math.min(MAX_CHARGE, state.cpuCharge + 1);
-        if (pAtk > 0) state.playerCharge -= pAtk;
-        if (cAtk > 0) state.cpuCharge -= cAtk;
+        if (pCost > 0) state.playerCharge -= pCost;
+        if (cCost > 0) state.cpuCharge -= cCost;
 
         updateChargesUI();
 
@@ -749,35 +876,35 @@
             }
 
             if (!pWin && !cWin) {
-                if (pAtk > 0 && cAtk > 0) {
+                if (pDmg > 0 && cDmg > 0) {
                     createParticles(els.playerAction, els.cpuAction, 'var(--color-attack)');
-                    if (state.currentRule === 'STANDARD') {
+                    if (state.currentRule === 'STANDARD' && pAct !== 'BLACK_HOLE' && cAct !== 'BLACK_HOLE') {
                         msg = "CLASH!"; desc = "お互いの攻撃が相殺されました";
                     } else {
-                        if (pAtk > cAtk) { pWin = true; msg = "YOU WIN!"; desc = "パワー差で打ち勝ちました！"; }
-                        else if (cAtk > pAtk) { cWin = true; msg = "OPPONENT WINS!"; desc = "パワー差で負けました..."; }
+                        if (pDmg > cDmg) { pWin = true; msg = pAct === 'BLACK_HOLE' ? "BLACK HOLE!" : "YOU WIN!"; desc = "パワー差で打ち勝ちました！"; }
+                        else if (cDmg > pDmg) { cWin = true; msg = cAct === 'BLACK_HOLE' ? "BLACK HOLE!" : "OPPONENT WINS!"; desc = "パワー差で負けました..."; }
                         else { msg = "CLASH!"; desc = "同パワーにより相殺されました"; }
                     }
                 } else {
-                    if (pAtk > 0) {
+                    if (pDmg > 0) {
                         createParticles(els.playerAction, els.cpuAction, 'var(--color-player)');
                         if (cAct === 'CHARGE' || cAct === 'NONE') {
-                            pWin = true; msg = "YOU WIN!"; desc = "相手の隙を突きました！";
+                            pWin = true; msg = pAct === 'BLACK_HOLE' ? "BLACK HOLE!" : "YOU WIN!"; desc = "相手の隙を突きました！";
                         } else if (cAct === 'BARRIER') {
-                            if (state.currentRule !== 'STANDARD' && pAtk === 3) {
-                                pWin = true; msg = "YOU WIN!"; desc = "バリアを貫通しました！";
+                            if (pAct === 'BLACK_HOLE') {
+                                pWin = true; msg = "BLACK HOLE!"; desc = "バリアごと飲み込みました！";
                             } else {
                                 msg = "BLOCKED!"; desc = "バリアで防がれました";
                             }
                         }
                     }
-                    if (cAtk > 0) {
+                    if (cDmg > 0) {
                         createParticles(els.cpuAction, els.playerAction, 'var(--color-cpu)');
                         if (pAct === 'CHARGE' || pAct === 'NONE') {
-                            cWin = true; msg = "OPPONENT WINS!"; desc = "隙を突かれました...";
+                            cWin = true; msg = cAct === 'BLACK_HOLE' ? "BLACK HOLE!" : "OPPONENT WINS!"; desc = "隙を突かれました...";
                         } else if (pAct === 'BARRIER') {
-                            if (state.currentRule !== 'STANDARD' && cAtk === 3) {
-                                cWin = true; msg = "OPPONENT WINS!"; desc = "バリアを貫通されました...";
+                            if (cAct === 'BLACK_HOLE') {
+                                cWin = true; msg = "BLACK HOLE!"; desc = "バリアごと飲み込まれました...";
                             } else {
                                 msg = "BLOCKED!"; desc = "バリアで防ぎました！";
                             }
@@ -786,23 +913,36 @@
                 }
             }
 
-            if (!pAtk && !cAtk && !pWin && !cWin) {
+            if (!pDmg && !cDmg && !pWin && !cWin) {
                 msg = "NEXT TURN";
             }
 
             showMessage(msg, 'var(--text-main)');
 
             setTimeout(() => {
-                if (pWin && cWin) endGame('DRAW', desc);
-                else if (pWin) endGame('PLAYER', desc);
-                else if (cWin) endGame('CPU', desc);
-                else {
-                    if(state.playMode === 'NPC') startNextTurn();
-                    else {
-                        // PvP will wait for start_turn from server
-                        socket.emit('start_next_turn', { roomId: getRoomIdFromSocket() });
-                    }
+                const isBlackHoleFinish = (pWin && pAct === 'BLACK_HOLE') || (cWin && cAct === 'BLACK_HOLE');
+                if (isBlackHoleFinish) {
+                    triggerBlackholeEffect();
                 }
+
+                setTimeout(() => {
+                    if (pWin && cWin) endGame('DRAW', desc);
+                    else if (pWin) {
+                        endGame('PLAYER', desc);
+                        if (state.playMode === 'PVP' && pAct === 'BLACK_HOLE') {
+                            socket.emit('submit_blackhole', { name: state.playerName, rule: state.currentRule });
+                        }
+                    }
+                    else if (cWin) endGame('CPU', desc);
+                    else {
+                        state.turnCount++;
+                        if(state.playMode === 'NPC') startNextTurn();
+                        else {
+                            socket.emit('start_next_turn', { roomId: getRoomIdFromSocket() });
+                        }
+                    }
+                }, isBlackHoleFinish ? 2500 : 0);
+
             }, 1500);
 
         }, 800);
@@ -810,31 +950,9 @@
 
     // --- AI / Helpers ---
 
-    function decideCpuAction() {
-        const available = ['CHARGE', 'BARRIER'];
-        if (state.currentRule === 'STANDARD') {
-            if (state.cpuCharge >= 1) available.push('ATTACK_1');
-            if (state.cpuCharge >= 1 && state.playerCharge >= 1) {
-                if (Math.random() < 0.4) return 'ATTACK_1';
-                if (Math.random() < 0.3) return 'BARRIER';
-            }
-        } else {
-            if (state.cpuCharge >= 1) available.push('ATTACK_1');
-            if (state.cpuCharge >= 2) available.push('ATTACK_2');
-            if (state.cpuCharge >= 3) available.push('ATTACK_3');
-
-            if (state.cpuCharge === 3 && Math.random() < 0.6) return 'ATTACK_3';
-            if (state.playerCharge >= 2) {
-                if (Math.random() < 0.5) return 'BARRIER';
-                if (state.cpuCharge >= 1 && Math.random() < 0.5) return `ATTACK_${state.cpuCharge}`;
-            }
-        }
-        return available[Math.floor(Math.random() * available.length)];
-    }
-
     function canUseAction(action, chargeLevel) {
         if (action === 'CHARGE' && chargeLevel >= MAX_CHARGE) return false;
-        if (action.startsWith('ATTACK')) {
+        if (action.startsWith('ATTACK') || action === 'BLACK_HOLE') {
             const cost = ACTIONS[action].cost;
             if (chargeLevel < cost) return false;
         }
@@ -942,7 +1060,7 @@
                 els.menuRule.classList.add('hidden');
                 els.menuMatchmaking.classList.remove('hidden');
                 els.mmRuleText.textContent = state.currentRule + " MODE";
-                socket.emit('join_queue', { rule: state.currentRule });
+                socket.emit('join_queue', { rule: state.currentRule, name: state.playerName, winStreak: state.winStreak });
             }
         } else {
             els.btnRestart.onclick = startGame;
@@ -976,8 +1094,40 @@
         }
     }
 
+    function triggerBlackholeEffect() {
+        const bh = document.createElement('div');
+        bh.style.position = 'fixed';
+        bh.style.top = '50%';
+        bh.style.left = '50%';
+        bh.style.width = '10px';
+        bh.style.height = '10px';
+        bh.style.backgroundColor = '#000';
+        bh.style.boxShadow = '0 0 50px 20px rgba(139, 92, 246, 0.8), 0 0 100px 50px rgba(0, 0, 0, 0.9)';
+        bh.style.borderRadius = '50%';
+        bh.style.transform = 'translate(-50%, -50%) scale(1)';
+        bh.style.zIndex = '9999';
+        bh.style.transition = 'transform 2.0s cubic-bezier(0.5, 0, 0.5, 1)';
+        document.body.appendChild(bh);
+
+        setTimeout(() => {
+            bh.style.transform = 'translate(-50%, -50%) scale(300)';
+        }, 100);
+
+        setTimeout(() => {
+            bh.style.opacity = '0';
+            bh.style.transition = 'opacity 0.5s ease';
+            setTimeout(() => bh.remove(), 500);
+        }, 2400);
+    }
+
     function shareOnX() {
-        const text = `CHARGE BATTLEで${state.winStreak}連勝しました！%0a手に汗握る心理戦を体験しよう！%0a%23ChargeBattle`;
+        const rawText = `なつかしのあの"手"対戦ゲームオンライン
+「溜め」「バリア」「攻撃」
+
+溜め5で「ブラックホール」を放て
+
+https://charge-battle.onrender.com/`;
+        const text = encodeURIComponent(rawText);
         const url = `https://twitter.com/intent/tweet?text=${text}`;
         window.open(url, '_blank');
     }

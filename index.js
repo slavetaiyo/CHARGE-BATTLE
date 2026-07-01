@@ -10,10 +10,14 @@ const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
 const RANKINGS_FILE = path.join(__dirname, 'rankings.json');
+const BLACKHOLES_FILE = path.join(__dirname, 'blackholes.json');
 
 // Ensure rankings file exists
 if (!fs.existsSync(RANKINGS_FILE)) {
     fs.writeFileSync(RANKINGS_FILE, JSON.stringify([]));
+}
+if (!fs.existsSync(BLACKHOLES_FILE)) {
+    fs.writeFileSync(BLACKHOLES_FILE, JSON.stringify([]));
 }
 
 function getRankings() {
@@ -37,6 +41,24 @@ function saveRankings(rankings) {
     fs.writeFileSync(RANKINGS_FILE, JSON.stringify(filtered, null, 2));
 }
 
+function getBlackholes() {
+    try {
+        const data = fs.readFileSync(BLACKHOLES_FILE, 'utf8');
+        return JSON.parse(data);
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveBlackhole(name, rule) {
+    const list = getBlackholes();
+    list.push({ name, rule, date: new Date().toISOString() });
+    // Keep top 50 recent blackholes
+    if (list.length > 50) list.shift();
+    fs.writeFileSync(BLACKHOLES_FILE, JSON.stringify(list, null, 2));
+    return list;
+}
+
 // Serve static files from 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -54,8 +76,12 @@ io.on('connection', (socket) => {
 
     // Send initial rankings
     socket.emit('update_rankings', getRankings());
+    socket.emit('update_blackholes', getBlackholes());
 
-    socket.on('join_queue', ({ rule }) => {
+    socket.on('join_queue', ({ rule, name, winStreak }) => {
+        socket.playerName = name || 'Guest';
+        socket.winStreak = winStreak || 0;
+
         if (!waitingQueues[rule]) {
             waitingQueues[rule] = null;
         }
@@ -77,7 +103,12 @@ io.on('connection', (socket) => {
                 turnNumber: 0
             };
 
-            io.to(roomId).emit('match_found', { rule, roomId });
+            const playersData = {
+                [p1.id]: { name: p1.playerName, winStreak: p1.winStreak },
+                [p2.id]: { name: p2.playerName, winStreak: p2.winStreak }
+            };
+
+            io.to(roomId).emit('match_found', { rule, roomId, players: playersData });
             
             // Start first turn
             setTimeout(() => {
@@ -143,6 +174,11 @@ io.on('connection', (socket) => {
             saveRankings(rankings);
             io.emit('update_rankings', getRankings());
         }
+    });
+
+    socket.on('submit_blackhole', ({ name, rule }) => {
+        const list = saveBlackhole(name, rule);
+        io.emit('update_blackholes', list);
     });
 
     socket.on('disconnect', () => {

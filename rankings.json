@@ -1,5 +1,11 @@
 [
   {
+    "name": "Guest754",
+    "winStreak": 1,
+    "rule": "STANDARD",
+    "date": "2026-07-01T11:15:54.184Z"
+  },
+  {
     "name": "G",
     "winStreak": 3,
     "rule": "TACTICAL",
@@ -10,6 +16,18 @@
     "winStreak": 2,
     "rule": "TACTICAL",
     "date": "2026-06-30T15:12:41.664Z"
+  },
+  {
+    "name": "Guest795",
+    "winStreak": 2,
+    "rule": "TACTICAL",
+    "date": "2026-07-01T10:39:40.604Z"
+  },
+  {
+    "name": "Guest75",
+    "winStreak": 2,
+    "rule": "TACTICAL",
+    "date": "2026-07-01T11:09:49.362Z"
   },
   {
     "name": "Guest188",
@@ -36,9 +54,27 @@
     "date": "2026-06-30T15:12:22.859Z"
   },
   {
+    "name": "Guest450",
+    "winStreak": 1,
+    "rule": "TACTICAL",
+    "date": "2026-07-01T10:26:09.048Z"
+  },
+  {
+    "name": "Guest166",
+    "winStreak": 1,
+    "rule": "TACTICAL",
+    "date": "2026-07-01T10:29:07.225Z"
+  },
+  {
     "name": "G",
     "winStreak": 1,
     "rule": "SPEED",
     "date": "2026-06-30T15:13:29.527Z"
+  },
+  {
+    "name": "TAIYO",
+    "winStreak": 1,
+    "rule": "SPEED",
+    "date": "2026-07-01T11:02:22.462Z"
   }
 ]

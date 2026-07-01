@@ -72,8 +72,8 @@
             flex-direction: column;
             padding: 40px 20px;
             align-items: center;
-            justify-content: center;
-            transition: opacity 0.5s, transform 0.5s;
+            justify-content: flex-start;
+            overflow-y: auto;
         }
 
         .fullscreen-menu.hidden {
@@ -117,19 +117,44 @@
         .btn-large.primary { border-color: var(--color-player); }
         .btn-large.secondary { border-color: var(--color-charge); }
 
-        /* Ranking Board */
-        #ranking-board, #blackhole-board {
+        /* Ranking Board Container */
+        #ranking-container {
             width: 100%;
             background: rgba(0,0,0,0.5);
             border: 1px solid var(--panel-border);
             border-radius: 12px;
             padding: 15px;
-            margin-bottom: 10px;
-            max-height: 200px;
-            overflow-y: auto;
+            margin-bottom: 25px;
         }
         
-        #ranking-board h3, #blackhole-board h3 { color: var(--color-charge); margin-bottom: 10px; font-size: 1.2rem; }
+        .ranking-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .ranking-tab-btn {
+            flex: 1;
+            padding: 8px;
+            background: transparent;
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            color: var(--text-muted);
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .ranking-tab-btn.active {
+            background: rgba(255,255,255,0.1);
+            color: var(--text-main);
+            border-color: var(--color-player);
+        }
+        
+        .ranking-content {
+            max-height: 180px;
+            overflow-y: auto;
+        }
         
         .rank-item {
             display: flex;
@@ -277,6 +302,12 @@
             letter-spacing: 2px;
             z-index: 150;
         }
+
+        @media (max-width: 600px) {
+            .title { font-size: 2.2rem; margin-bottom: 15px; }
+            .fullscreen-menu { padding: 20px 15px; }
+            .btn-large { padding: 15px; font-size: 1.2rem; }
+        }
     </style>
 </head>
 <body>
@@ -292,14 +323,19 @@
             <input type="text" id="player-name-input" placeholder="名前を入力（10文字まで）" maxlength="10">
         </div>
         
-        <div id="ranking-board">
-            <h3>🔥 TOP PLAYERS (WIN STREAKS)</h3>
-            <div id="ranking-list">Loading...</div>
-        </div>
-        
-        <div id="blackhole-board" style="margin-top: 20px;">
-            <h3>🌌 BLACK HOLE MASTERS</h3>
-            <div id="blackhole-list">Loading...</div>
+        <div id="ranking-container">
+            <div class="ranking-tabs">
+                <button class="ranking-tab-btn active" data-target="ranking-board">🔥 連勝数</button>
+                <button class="ranking-tab-btn" data-target="blackhole-board">🌌 B.H.</button>
+            </div>
+            
+            <div id="ranking-board" class="ranking-content">
+                <div id="ranking-list">Loading...</div>
+            </div>
+            
+            <div id="blackhole-board" class="ranking-content" style="display: none;">
+                <div id="blackhole-list">Loading...</div>
+            </div>
         </div>
         
         <button id="btn-mode-npc" class="btn-large secondary">Play vs CPU</button>
@@ -451,6 +487,8 @@
         nameInput: document.getElementById('player-name-input'),
         rankingList: document.getElementById('ranking-list'),
         blackholeList: document.getElementById('blackhole-list'),
+        tabBtns: document.querySelectorAll('.ranking-tab-btn'),
+        rankingContents: document.querySelectorAll('.ranking-content'),
         btnModeNpc: document.getElementById('btn-mode-npc'),
         btnModePvp: document.getElementById('btn-mode-pvp'),
         ruleCards: document.querySelectorAll('.rule-card'),
@@ -576,6 +614,17 @@
         els.ruleCards.forEach(card => {
             card.addEventListener('click', () => {
                 selectRule(card.dataset.rule);
+            });
+        });
+
+        // Tab Listeners
+        els.tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                els.tabBtns.forEach(b => b.classList.remove('active'));
+                els.rankingContents.forEach(c => c.style.display = 'none');
+                
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.target).style.display = 'block';
             });
         });
 

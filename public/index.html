@@ -83,7 +83,7 @@
         }
 
         .title {
-            font-size: 3rem;
+            font-size: clamp(1.2rem, 5.5vw, 2.2rem);
             font-weight: 900;
             margin-bottom: 20px;
             text-align: center;
@@ -91,6 +91,7 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             text-shadow: 0 0 30px rgba(6, 182, 212, 0.5);
+            white-space: nowrap;
         }
 
         .btn-large {
@@ -304,7 +305,7 @@
         }
 
         @media (max-width: 600px) {
-            .title { font-size: 2.2rem; margin-bottom: 15px; }
+            .title { margin-bottom: 15px; }
             .fullscreen-menu { padding: 20px 15px; }
             .btn-large { padding: 15px; font-size: 1.2rem; }
         }
@@ -326,7 +327,7 @@
         <div id="ranking-container">
             <div class="ranking-tabs">
                 <button class="ranking-tab-btn active" data-target="ranking-board">🔥 連勝数</button>
-                <button class="ranking-tab-btn" data-target="blackhole-board">🌌 B.H.</button>
+                <button class="ranking-tab-btn" data-target="blackhole-board">🌌 B.H.Master</button>
             </div>
             
             <div id="ranking-board" class="ranking-content">
